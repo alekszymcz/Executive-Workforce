@@ -1,0 +1,120 @@
+use employees;
+SELECT 
+    -- Number of active employees
+    COUNT(DISTINCT de.emp_no) AS active_employees,
+     -- Average current salary
+    ROUND(AVG(s.salary), 2) AS avg_salary_current,
+    -- Number of active managers
+    COUNT(DISTINCT dm.emp_no) AS active_managers,
+     -- Average length of service (in years)
+    ROUND(AVG(DATEDIFF(CURDATE(), e.hire_date) / 365),
+            2) AS avg_tenure_years
+FROM
+    employees e
+        JOIN
+    dept_emp de ON e.emp_no = de.emp_no
+        AND de.to_date = '9999-01-01'
+        JOIN
+    salaries s ON e.emp_no = s.emp_no
+        AND s.to_date = '9999-01-01'
+        LEFT JOIN
+    dept_manager dm ON e.emp_no = dm.emp_no
+        AND dm.to_date = '9999-01-01';
+        
+       -- monthly trend in the number of employees
+	SELECT
+    DATE_FORMAT(d, '%Y-%m') AS month,
+    COUNT(DISTINCT emp_no) AS headcount
+FROM (
+    SELECT 
+        de.emp_no,
+        LAST_DAY(de.from_date) AS d
+    FROM dept_emp de
+
+    UNION ALL
+
+    SELECT
+        de.emp_no,
+        LAST_DAY(de.to_date) AS d
+    FROM dept_emp de
+    WHERE de.to_date <> '9999-01-01'
+) AS dates
+GROUP BY month
+ORDER BY month;
+
+	-- monthly trend in the number of employees
+SELECT
+    DATE_FORMAT(d, '%Y-%m') AS month,
+    COUNT(DISTINCT emp_no) AS headcount
+FROM (
+    SELECT 
+        de.emp_no,
+        LAST_DAY(de.from_date) AS d
+    FROM dept_emp de
+
+    UNION ALL
+
+    SELECT
+        de.emp_no,
+        LAST_DAY(de.to_date) AS d
+    FROM dept_emp de
+    WHERE de.to_date <> '9999-01-01'
+) AS dates
+GROUP BY month
+ORDER BY month;
+
+	-- employees per department 
+    SELECT
+    d.dept_no,
+    d.dept_name,
+    COUNT(de.emp_no) AS employees_count
+FROM departments d
+JOIN dept_emp de
+    ON d.dept_no = de.dept_no
+    AND de.to_date = '9999-01-01'
+GROUP BY d.dept_no, d.dept_name
+ORDER BY employees_count DESC;
+
+	-- salary per department
+SELECT
+    d.dept_no,
+    d.dept_name,
+    ROUND(AVG(s.salary), 2) AS avg_salary_department
+FROM departments d
+JOIN dept_emp de
+    ON d.dept_no = de.dept_no
+    AND de.to_date = '9999-01-01'
+JOIN salaries s
+    ON de.emp_no = s.emp_no
+    AND s.to_date = '9999-01-01'
+GROUP BY d.dept_no, d.dept_name
+ORDER BY avg_salary_department DESC;
+
+	-- salary trend 
+    SELECT
+    DATE_FORMAT(s.from_date, '%Y-%m') AS month,
+    ROUND(AVG(s.salary), 2) AS avg_salary
+FROM salaries s
+GROUP BY month
+ORDER BY month;
+
+	-- manager data 
+    SELECT
+    dm.emp_no,
+    e.first_name,
+    e.last_name,
+    dm.dept_no,
+    d.dept_name,
+    dm.from_date,
+    dm.to_date,
+    ROUND(DATEDIFF(CURDATE(), dm.from_date) / 365, 2) AS years_in_role,
+    CASE 
+        WHEN dm.to_date = '9999-01-01' THEN 'Active'
+        ELSE 'Past'
+    END AS status
+FROM dept_manager dm
+JOIN employees e 
+    ON dm.emp_no = e.emp_no
+JOIN departments d
+    ON dm.dept_no = d.dept_no
+ORDER BY dm.dept_no, dm.from_date;
